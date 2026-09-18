@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>今日の一卦｜易経六十四卦みくじ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e8edf2; --paper:#f5f7f9; --ink:#1b2837; --sub:#51606f;
+  --ai:#2c4766; --gold:#94733a; --line:#c9d2dc;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1824; --paper:#152232; --ink:#e3e9ef; --sub:#9aa8b6;
+    --ai:#8fb0d4; --gold:#cdad6a; --line:#2a3b4f;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1824; --paper:#152232; --ink:#e3e9ef; --sub:#9aa8b6;
+  --ai:#8fb0d4; --gold:#cdad6a; --line:#2a3b4f;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  min-height:100vh; display:flex; justify-content:center;
+  padding:40px 20px 56px; line-height:1.9;
+}
+main{width:100%;max-width:440px;text-align:center}
+.small{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;font-size:.8rem;color:var(--sub);letter-spacing:.08em}
+h1{font-size:2.1rem;font-weight:800;letter-spacing:.3em;margin:10px 0 2px;padding-left:.3em}
+.lead{font-size:.95rem;color:var(--sub);margin-bottom:28px}
+
+/* 卦の描画：主役 */
+.hex{display:flex;flex-direction:column-reverse;gap:13px;width:180px;margin:0 auto 26px;height:152px;justify-content:flex-start}
+.ln{height:14px;display:flex;gap:26px;opacity:0;transform:scaleX(.3)}
+.ln.on{opacity:1;transform:scaleX(1);transition:opacity .35s ease, transform .45s cubic-bezier(.2,.8,.2,1)}
+.ln span{flex:1;background:var(--ai);border-radius:1px}
+.ln.yang span:last-child{display:none}
+.hex.idle .ln{opacity:.18;transform:none}
+.hex.idle .ln span{background:var(--line)}
+
+button{
+  font-family:inherit;font-size:1.1rem;font-weight:600;letter-spacing:.25em;
+  color:var(--paper);background:var(--ai);border:none;border-radius:2px;
+  padding:14px 44px 14px calc(44px + .25em);cursor:pointer;
+}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+button:disabled{opacity:.5;cursor:default}
+
+.card{background:var(--paper);border:1px solid var(--line);border-top:3px solid var(--gold);padding:28px 24px 26px;text-align:left;margin-top:4px}
+.no{font-family:"Zen Kaku Gothic New",sans-serif;font-size:.8rem;color:var(--gold);letter-spacing:.12em}
+.name{font-size:2rem;font-weight:800;letter-spacing:.12em;line-height:1.4;margin-top:2px}
+.yomi{font-size:.85rem;color:var(--sub);letter-spacing:.1em}
+.tri{font-family:"Zen Kaku Gothic New",sans-serif;font-size:.8rem;color:var(--sub);margin:10px 0 18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.h{font-family:"Zen Kaku Gothic New",sans-serif;font-size:.78rem;color:var(--gold);letter-spacing:.12em;margin-bottom:2px}
+.kaji{font-size:1.15rem;font-weight:600;margin-bottom:18px}
+.msg{font-size:1.05rem;line-height:1.95}
+.note{margin-top:22px}
+.hist{margin-top:34px;text-align:left}
+.hist ul{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px}
+.hist li{font-size:.85rem;color:var(--sub)}
+.hist li b{color:var(--ink);font-weight:600}
+.end{padding:30px 10px}
+.end p{margin-top:10px}
+.hide{display:none}
+@media (prefers-reduced-motion: reduce){.ln.on{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <p class="small">易経 六十四卦みくじ</p>
+  <h1>今日の一卦</h1>
+  <p class="lead">1日にひとつ、あなたへの卦が立ちます</p>
+
+  <div id="hex" class="hex idle"></div>
+
+  <div id="drawArea">
+    <button id="drawBtn">卦を立てる</button>
+    <p class="small note" id="period"></p>
+  </div>
+
+  <section id="result" class="card hide" aria-live="polite">
+    <p class="no" id="rNo"></p>
+    <p class="name" id="rName"></p>
+    <p class="yomi" id="rYomi"></p>
+    <p class="tri" id="rTri"></p>
+    <p class="h">キーワード</p>
+    <p class="kaji" id="rKaji"></p>
+    <p class="h">今日のメッセージ</p>
+    <p class="msg" id="rMsg"></p>
+  </section>
+  <p class="small note hide" id="again">今日の卦はこちらです。明日また新しい卦が引けます。</p>
+
+  <section id="ended" class="end hide">
+    <p class="name" style="font-size:1.5rem">みくじの期間は終わりました</p>
+    <p>ひと月のあいだ、ありがとうございました。<br>引いた卦を振り返ってみてください。</p>
+  </section>
+
+  <section id="hist" class="hist hide">
+    <p class="small">これまでに立った卦</p>
+    <ul id="histList"></ul>
+  </section>
+  <p class="small" style="margin-top:36px;font-size:.7rem">卦の解説：(C) Yukiko Inoue 気ナビ https://kigaku-navi.com</p>
+</main>
+
+<script>
+// ===== 設定 =====
+// 期間：初めて引いた日から何日間引けるか
+const PERIOD_DAYS = 30;
+// 全員共通の期間（ランチ会用）
+const FIXED_START = "2026-09-27";
+const FIXED_END = "2026-10-26";
+
+// 八卦（下から上へ 1=陽 0=陰）
+const T = {
+  乾:{n:"天",l:[1,1,1]}, 兌:{n:"沢",l:[1,1,0]}, 離:{n:"火",l:[1,0,1]}, 震:{n:"雷",l:[1,0,0]},
+  巽:{n:"風",l:[0,1,1]}, 坎:{n:"水",l:[0,1,0]}, 艮:{n:"山",l:[0,0,1]}, 坤:{n:"地",l:[0,0,0]}
+};
+// [卦名, 読み, 上卦, 下卦, 卦辞の要点, 今日のひとこと]
+const H = [
+["乾為天","けんいてん","乾","乾","積極的に","天から助けがあり、あらゆる願いは成就する。誠意で更なる成果がある。"],
+["坤為地","こんいち","坤","坤","柔順・地道","願いは通る。自信を持って。やさしく柔らかく進める。周りと一緒に。"],
+["水雷屯","すいらいちゅん","坎","震","困難・始まり","スタートで苦しむが、困難を乗り越えれば大きな成功がある。"],
+["山水蒙","さんすいもう","艮","坎","無知蒙昧","自分の未熟を自覚して謙虚に学んで進む事。人間的な向上を。"],
+["水天需","すいてんじゅ","坎","乾","待つ・チャンス到来","チャンスは目の前に。焦らず待てば成就する。"],
+["天水訟","てんすいしょう","乾","坎","訴訟・争い","戦うと不利。正しくても折れる事。悪意や面子、意地は捨てる。"],
+["地水師","ちすいし","坤","坎","軍隊・戦い","激しい戦いになる。人格者で実力がある指導者がいれば吉。"],
+["水地比","すいちひ","坎","坤","親しむ・助け合い","人が集まる。自身を許し人を許し仲良くする。遅れてくる人は注意。"],
+["風天小畜","ふうてんしょうちく","巽","乾","抑制・多少の成果","不安や不満は自身の実力不足から。チャンスに備え実力を蓄える。"],
+["天沢履","てんたくり","乾","兌","生活態度","危険な所に行こうとしている。礼節・順序・手続きが正しければ問題ない。"],
+["地天泰","ちてんたい","坤","乾","安泰・盛運・平和","自身がしっかりしていれば安泰。積極的、果敢に処理してよい。"],
+["天地否","てんちひ","乾","坤","閉塞・疎通できない","全ての希望や契約は達成せず進まない。控えめに、才能を磨く時。"],
+["天火同人","てんかどうじん","乾","離","協力・仲間","多くの人と協力して大きな勝負に出て吉。大成果を得られる。"],
+["火天大有","かてんたいゆう","離","乾","大所有・大成果","光り輝くような大きな成果が出る。謙虚に。慢心すると失敗する。"],
+["地山謙","ちざんけん","坤","艮","謙遜・地道","謙虚に行動＆人と付き合えばうまくいく。素直に丁寧に取り組むと吉。"],
+["雷地豫","らいちよ","震","坤","喜び・楽しみ","準備していたことが整い成果が出る。順序通りに準備すれば順調に進む。"],
+["沢雷随","たくらいずい","兌","震","随順","人、状況、タイミング、師や賢人に従ってついていくと吉。あらゆる思いは通る。"],
+["山風蠱","さんぷうこ","艮","巽","腐敗・チャンス","内部の腐敗を刷新するチャンス。新しい人生のキッカケあり。大勝負◎"],
+["地沢臨","ちたくりん","坤","兌","臨戦・積極策","勝負の時。油断は禁物。積極的に強い意志で取り組むと吉。"],
+["風地観","ふうちかん","巽","坤","観察","行動より現状維持。静かに自分、状況、相手を観察し真心で対処する時。"],
+["火雷噬嗑","からいぜいごう","離","震","噛み砕く","現状打破の時。障害を取り除くチャンスが来ている。積極的に。"],
+["山火賁","さんかひ","艮","離","かんざし・飾る","自身の心を飾って明るく前向きに。周りを褒めてその気にさせる。"],
+["山地剥","さんちはく","艮","坤","剥落・剥ぎ取る","守りの時。自身の足元が不安定で危険。身内や足元を固める。"],
+["地雷復","ちらいふく","坤","震","帰る・戻る","何かが復活し新しいことが始まる。再挑戦は◎ゆっくり進める◎。独断専行✖"],
+["天雷无妄","てんらいむぼう","乾","震","無邪気・望外","つまらない疑い・打算を捨て自身のやるべきことをやれば望外の成果がある。"],
+["山天大畜","さんてんたいちく","艮","乾","大いに蓄える・停滞","自己成長を継続すること。自身を活用し大きな勝負を◎"],
+["山雷頤","さんらいい","艮","震","養う","言行一致で正しい確かな生活の仕方が成果を呼ぶ。大言壮語は凶。"],
+["沢風大過","たくふうたいか","兌","巽","重荷","重い責任を背負っている。自信喪失と慢心は✖。信じて進む事が現状打破の鍵。"],
+["坎為水","かんいすい","坎","坎","陥入・重なる困難","苦難の後に苦難が来ている。誠実さが鍵。信念を変えず逃げないこと。"],
+["離為火","りいか","離","離","離れる・随う","実力を発揮するチャンス到来。冷静に。智慧や道理を与える師や真理に従う。"],
+["沢山咸","たくざんかん","兌","艮","感動・感応","周りとの心の交流を大切に。心が通じ合えば成果は大きい。与えること。"],
+["雷風恒","らいふうこう","震","巽","不変・継続","新しいことが始まるが、継続すべきものは継続すること。やめると危険。"],
+["天山遯","てんざんとん","乾","艮","退却・退避","勇気を持って撤退が吉。何かから逃げているなら、もとに戻れのサイン。"],
+["雷天大壮","らいてんたいそう","震","乾","大いに発展成長","物事が大きく発展し完成する。慢心・独断先行をすると失敗する。"],
+["火地晋","かちしん","離","坤","前進・上昇","順調に進む。自身を信じて積極的に前進。高い目標を立てて行ける所まで行く。"],
+["地火明夷","ちかめいい","坤","離","光を失う","能力があり正しくしていても用いられない。無能なふりしてチャンスまで待て。"],
+["風火家人","ふうかかじん","巽","離","家族","組織内（家族）の人間関係や結束が強ければ、全てうまくいく。女性の協力が鍵。"],
+["火沢睽","かたくけい","離","兌","対立・行き違い","感情的な行き違いや内輪モメで物事が進まない。共通点見つけ和解を。"],
+["水山蹇","すいざんけん","坎","艮","足萎え","動きたいけど動けない。強引に進むと危険。謙虚に専門家・信頼できる人に相談。"],
+["雷水解","らいすいかい","震","坎","解放","問題解決のチャンス到来。簡単で安全な方法を選ぶこと。やると決めたらすぐに行動。"],
+["山沢損","さんたくそん","艮","兌","減らす","目上（親・上司・親会社）に与える。損得を考えず与えると、自分に返ってくる。"],
+["風雷益","ふうらいえき","巽","震","益す","大きなチャンスが来る。積極的に。大勝負◎ 目下・子供・部下・下請けに与えると吉。"],
+["沢天夬","たくてんかい","兌","乾","決断","決断の時。先延ばしにしない事。人を裁く時は穏便に。処分は公にすると吉。"],
+["天風姤","てんぷうこう","乾","巽","出会い","予想外のよい出会いがあり大きく発展する。異性との出会いなら甘い誘いに注意。"],
+["沢地萃","たくちすい","兌","坤","集まる","人や物が集まり、全て思うように運ぶ。類友が集まるので人格の向上を。"],
+["地風升","ちふうしょう","坤","巽","上昇","上昇気流に乗って発展していく。謙虚に。師・指導を受ける人を得る事。"],
+["沢水困","たくすいこん","兌","坎","苦難","苦境の中にいるがあきらめず、逃げず、言い訳を捨てて取り組むと成果が出る。"],
+["水風井","すいふうせい","坎","巽","井戸","相手に感謝されなくても誠心誠意与え続ける時。地道な努力を続ける。"],
+["沢火革","たくかかく","兌","離","改革","今のままでは限界がある大変革の時。自分を信じ周りを信じて大胆な変革を。"],
+["火風鼎","かふうてい","離","巽","鍋","全ての条件が整い安定している。何をやっても確実に成功する。三者で協力して。"],
+["震為雷","しんいらい","震","震","雷鳴・発展","大躍進が来る。落ち着いて冷静に確実に進めれば、予想外の発展を得る。"],
+["艮為山","ごんいさん","艮","艮","停止・停滞","大躍進の前の停滞の時。動かず、状況や自身の心を静かに見つめる時。"],
+["風山漸","ふうざんぜん","巽","艮","次第に進む","正しい順序で着実にゆっくり進むと成果あり。急いで進めたり、即断は✖"],
+["雷沢帰妹","らいたくきまい","震","兌","未成熟・恋愛乱心","時期尚早。未成熟準備不足でこのまま進めると危険。準備の時。"],
+["雷火豊","らいかほう","震","離","盛大・繁栄","盛大に発展し、物事は順調に進む。良い時なので進んでよい。"],
+["火山旅","かざんりょ","離","艮","旅人","スランプで不安定。旅に出たり、普段とは違うやり方、行動を。自信を持って。"],
+["巽為風","そんいふう","巽","巽","従順","周りやリーダーの意見に従えば、物事はうまくいく。やさしく柔らかくが吉。"],
+["兌為沢","だいたく","兌","兌","悦び","自身と周りを喜ばせること。一緒に食事＆おしゃべりをして心を満たすと吉。"],
+["風水渙","ふうすいかん","巽","坎","四散・騒ぐ","解決不能の問題が解決へと動き出す。大きな勝負も◎ 恩人にお礼を。"],
+["水沢節","すいたくせつ","坎","兌","節度を持つ","やりすぎ強欲はＮＧ。だらしなさは✖。自身の成長に節度が必要。"],
+["風沢中孚","ふうたくちゅうふ","巽","兌","誠実","心が誠実であればチャンスが向こうからやってくる。大勝負も◎"],
+["雷山小過","らいざんしょうか","震","艮","少し過ぎる","今、消極的なら積極的に。今、積極的ならやり過ぎている。自重する。"],
+["水火既済","すいかきせい","坎","離","完成","完成・達成して喜びの時。この状況を維持することを考える＆次の目標へ。"],
+["火水未済","かすいびせい","離","坎","未完成","なかなか完成しない。焦らず努力し才能を磨く時。より大きく発展する。"]
+];
+
+const KEY = "ekikyo_kinavi_v1";
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
+const today = ymd(new Date());
+
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || {start:null,draws:{}}; }catch(e){ return {start:null,draws:{}}; } }
+function save(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} }
+
+function endDate(s){
+  if(FIXED_END) return parse(FIXED_END);
+  const base = s.start ? parse(s.start) : parse(today);
+  const e = new Date(base); e.setDate(e.getDate() + PERIOD_DAYS - 1); return e;
+}
+function linesOf(i){ const h = H[i]; return [...T[h[3]].l, ...T[h[2]].l]; }
+
+function buildHex(lines, idle){
+  const box = $("hex"); box.innerHTML = ""; box.className = "hex" + (idle ? " idle" : "");
+  (lines || [1,0,1,0,1,0]).forEach(v=>{
+    const d = document.createElement("div");
+    d.className = "ln " + (v ? "yang" : "yin");
+    d.innerHTML = "<span></span><span></span>";
+    box.appendChild(d);
+  });
+}
+function reveal(animate){
+  const els = [...document.querySelectorAll("#hex .ln")];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(!animate || reduce){ els.forEach(e=>e.classList.add("on")); return Promise.resolve(); }
+  return new Promise(res=>{
+    els.forEach((e,k)=>setTimeout(()=>{ e.classList.add("on"); if(k===5) setTimeout(res,450); }, 380*k + 150));
+  });
+}
+function showResult(i){
+  const h = H[i];
+  $("rNo").textContent = `第${i+1}卦`;
+  $("rName").textContent = h[0];
+  $("rYomi").textContent = h[1];
+  $("rTri").textContent = `上卦 ${h[2]}（${T[h[2]].n}）／下卦 ${h[3]}（${T[h[3]].n}）`;
+  $("rKaji").textContent = `【${h[4]}】`;
+  $("rMsg").textContent = h[5];
+  $("result").classList.remove("hide");
+}
+function showHist(s){
+  const days = Object.keys(s.draws).sort();
+  if(days.length < 1) return;
+  $("histList").innerHTML = days.map(d=>{
+    const [,m,dd] = d.split("-").map(Number);
+    return `<li>${m}/${dd} <b>${H[s.draws[d]][0]}</b></li>`;
+  }).join("");
+  $("hist").classList.remove("hide");
+}
+function periodText(s){
+  const e = endDate(s);
+  const left = Math.round((e - parse(today)) / 86400000) + 1;
+  if(FIXED_END) return `${e.getMonth()+1}月${e.getDate()}日まで、1日1回引けます（あと${left}日）`;
+  return s.start ? `${e.getMonth()+1}月${e.getDate()}日まで、1日1回引けます（あと${left}日）`
+                 : `初めて引いた日から${PERIOD_DAYS}日間、1日1回引けます`;
+}
+
+function init(){
+  const s = load();
+  if(FIXED_START && parse(today) < parse(FIXED_START)){
+    buildHex(null, true);
+    const st = parse(FIXED_START), e = parse(FIXED_END);
+    $("drawBtn").disabled = true;
+    $("period").textContent = `${st.getMonth()+1}月${st.getDate()}日から${e.getMonth()+1}月${e.getDate()}日まで、1日1回引けます`;
+    return;
+  }
+  if(parse(today) > endDate(s) && (s.start || FIXED_END)){
+    buildHex(null, true); $("drawArea").classList.add("hide");
+    $("ended").classList.remove("hide"); showHist(s); return;
+  }
+  if(s.draws[today] !== undefined){
+    const i = s.draws[today];
+    buildHex(linesOf(i), false); reveal(false); showResult(i);
+    $("drawArea").classList.add("hide"); $("again").classList.remove("hide");
+    showHist(s); return;
+  }
+  buildHex(null, true);
+  $("period").textContent = periodText(s);
+  showHist(s);
+}
+
+$("drawBtn").addEventListener("click", async ()=>{
+  const s = load();
+  $("drawBtn").disabled = true;
+  const i = Math.floor(Math.random() * 64);
+  if(!s.start) s.start = today;
+  s.draws[today] = i; save(s);
+  buildHex(linesOf(i), false);
+  await reveal(true);
+  $("drawArea").classList.add("hide");
+  showResult(i);
+  $("again").classList.remove("hide");
+  showHist(s);
+});
+
+init();
+</script>
+</body>
+</html>
